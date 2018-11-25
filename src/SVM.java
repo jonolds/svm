@@ -1,59 +1,115 @@
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
-import java.util.regex.Pattern;
-import java.util.stream.*;
-import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.apache.spark.SparkContext;
-import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.sql.SparkSession;
-
-import scala.Tuple2;
-
-import org.apache.spark.api.java.function.*;
 
 @SuppressWarnings("unused")
 public class SVM extends SVMHelp {
+	JavaRDD<Integer[]> feats;
+	JavaRDD<Integer> labs;
 	
-	void GD() throws Exception {
-		JavaPairRDD<Long, List<Integer>> feats = readIdxStr("features.train.txt").mapToPair(x->new Tuple2<>(x._1, getIntsFromStr(x._2)));
-		JavaPairRDD<Long, Integer> labs = readIdxStr("target.train.txt").mapToPair(x->new Tuple2<>(x._1, Integer.valueOf(x._2)));
-
-		JavaPairRDD<List<Integer>, Integer> train = feats.join(labs).sortByKey().mapToPair(x->new Tuple2<>(x._2._1, x._2._2));
-
-		double[] w = new double[feats.first()._2.size()];
-		System.out.println(w.length);
+	static final int C = 100;
+	static final double n = .5;
+	
+	void batchSG() {
+		double[] w = new double[feats.first().length];
+		int correct = 0, cur_ex = 0;
+		List<Integer[]> examples = feats.collect();
+		List<Integer> lab = labs.collect();
+		
+		while(correct < examples.size()) {
+			Integer[] ex = examples.get(cur_ex);
+			double wdotx = wDotX(w, examples.get(cur_ex));
+			double y = lab.get(cur_ex);
+			
+			System.out.println("cur_ex: " + cur_ex + "\nex: " + toStr(ex));
+			System.out.println("w: " + toStr(w) + "\nwdotx: " + wdotx);
+			System.out.println("Math.signum(wdotx): " + Math.signum(wdotx) + "\ny: " + y);
+			
+			if(Math.signum(wdotx) == y) {
+				correct++;
+				System.out.println("Hit. Correct in a row: " + correct);
+			}
+			else {
+				correct = 0;
+				w = adjustW(w, Math.signum(lab.get(cur_ex)), examples.get(cur_ex));
+				System.out.println("Miss. ** w = [" + toStr(w) + "]");
+			}
+			cur_ex += (cur_ex == (examples.size()-1)) ? (-cur_ex) : 1;
+			System.out.println("Correct: " + correct + "\n");
+		}
+		System.out.println("final w: " + toStr(w));
 	}
 	
-//	class FlatFunc implements FlatMapFunction<String[], Integer[]> {
-//		public Iterator<Integer[]> call(String[] t) throws Exception {
-//			List<Integer> list = Arrays.stream(t).mapToInt(x->Integer.parseInt(x)).boxed().collect(Collectors.toList());
-//			List<Integer[]> l2 = IntStream.range(0, t.length).map(mapper)
-//			return null;
-//		}
-//	}
+	double wDotX(double[] w, Integer[] x) {
+		return IntStream.range(0, w.length).mapToDouble(z->w[z]*x[z]).sum();
+	}
 	
-	
+	double[] adjustW(double[] oldW, float sign, Integer[] x) {
+		double[] newW = new double[oldW.length];
+		for(int i = 0; i < oldW.length; i++)
+			newW[i] = oldW[i] + (x[i]*sign*n);
+		return newW;
+	}
 	
 
-
+	
+//	feats.saveAsTextFile("output/out1");
+//	labs.saveAsTextFile("output/out2");
+//	train.saveAsTextFile("output/out3");
+//	featsIDX.saveAsTextFile("output/out4");
+//	labsIDX.saveAsTextFile("output/out5");
+	
 	SVM() throws Exception {
 		settings();
-		GD();
+		loadData();
+		batchSG();
+//		perceptron();
 //		Thread.sleep(20000);
 		ss.close();
+	}
+
+	void loadData() {
+		feats = getFeats("feats2.txt");
+		labs = getLabs("labs2.txt");
+		train = valsToPairRDD(featsIDX.join(labsIDX));
 	}
 
 /* MAIN */
 	public static void main(String[] args) throws Exception {
 		SVM svm = new SVM();
+	}
+	void stochGD() {
+	}
+	
+	
+	void perceptron() {
+		double[] w = new double[feats.first().length];
+		int correct = 0, cur_ex = 0;
+		List<Integer[]> examples = feats.collect();
+		List<Integer> lab = labs.collect();
+		
+		while(correct < examples.size()) {
+			Integer[] ex = examples.get(cur_ex);
+			double wdotx = wDotX(w, examples.get(cur_ex));
+			double y = lab.get(cur_ex);
+			
+			System.out.println("cur_ex: " + cur_ex + "\nex: " + toStr(ex));
+			System.out.println("w: " + toStr(w) + "\nwdotx: " + wdotx);
+			System.out.println("Math.signum(wdotx): " + Math.signum(wdotx) + "\ny: " + y);
+			
+			if(Math.signum(wdotx) == y) {
+				correct++;
+				System.out.println("Hit. Correct in a row: " + correct);
+			}
+			else {
+				correct = 0;
+				w = adjustW(w, Math.signum(lab.get(cur_ex)), examples.get(cur_ex));
+				System.out.println("Miss. ** w = [" + toStr(w) + "]");
+			}
+			cur_ex += (cur_ex == (examples.size()-1)) ? (-cur_ex) : 1;
+			System.out.println("Correct: " + correct + "\n");
+		}
+		System.out.println("final w: " + toStr(w));
 	}
 }
