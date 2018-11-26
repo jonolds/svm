@@ -19,8 +19,8 @@ class StochGDSVM extends LearnerHelp {
 		this.yL = data.lL;
 		this.tL = data.tL;
 
-		n = tL.size();
-		d = xL.get(0).length;
+		n = 6000;
+		d = 122;
 		eta = 0.0001; epsilon = 0.001;
 		w = new double[d];
 		run();
@@ -38,10 +38,10 @@ class StochGDSVM extends LearnerHelp {
 			final Double[] xi = xL.get(i);
 			final double yi = yL.get(i);
 			
-			ints(0, d).mapToDouble(j->(w[j] = updateJthW(j)));
+			ints(0, d).mapToDouble(j->(w[j] = updateJthW(xi, yi, j)));
 
 			b = getNewB(xi, yi);
-			cost = getCost(xi, yi);
+			cost = getFWB();
 			
 //			System.out.println(cost);
 			k+=1;
@@ -52,11 +52,7 @@ class StochGDSVM extends LearnerHelp {
 	}
 
 	
-	double getFWB() {
-		double sumL = .5*ints(0, d).mapToDouble(j->Math.pow(w[j], 2)).sum();
-		double sumR = C*ints(0, n).mapToDouble(i->Math.max(0, 1-yL.get(i)*(dotProduct(w, xL.get(i))+b))).sum();
-		return sumL + sumR;
-	}
+
 	
 	double getNewB(Double[] xi, double yi) {
 		double nextB;
@@ -67,18 +63,21 @@ class StochGDSVM extends LearnerHelp {
 		return b-eta*(nextB);
 	}
 	
-	double updateJthW(int j) {
-		double sum1 = tL.stream().mapToDouble(t->t._2*(dotProduct(w, t._1) + b) >= 1 ? 0 : -t._2*t._1[j]).sum();
+	double updateJthW(Double[] xi, double yi, int j) {
+		double sum1 = yi*(dotProduct(w, xi) + b) >= 1 ? 0 : -yi*xi[j];
 		sum1 = w[j] + C*sum1;
 		return w[j] - eta*(sum1);
 	}
 	
+	
 	double getCost(Double[] xi, double yi) {
-//		Double[] xi = xL.get(i);
-//		double yi = yL.get(i);
-		
 		double sumL = .5*ints(0, d).mapToDouble(j->Math.pow(w[j], 2)).sum();
 		double sumR = C*Math.max(0, 1-yi*(dotProduct(w, xi)+b));
+		return sumL + sumR;
+	}
+	double getFWB() {
+		double sumL = .5*ints(0, d).mapToDouble(j->Math.pow(w[j], 2)).sum();
+		double sumR = C*ints(0, n).mapToDouble(i->Math.max(0, 1-yL.get(i)*(dotProduct(w, xL.get(i))+b))).sum();
 		return sumL + sumR;
 	}
 	
