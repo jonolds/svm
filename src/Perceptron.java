@@ -1,27 +1,39 @@
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.IntStream;
 
-class Perceptron extends Learner {
+import scala.Tuple2;
+
+class Perceptron extends LearnerHelp {
 	int correct = 0;
+	List<Double> yL;
+	List<Double[]> xL;
+	List<Tuple2<Double[],Double>> tL;
+	
+	int n, d, C = 100;
+	double eta, epsilon, b, bOLD, cost, costOLD;
+	double[] w, wOLD;
+	
 	Perceptron(LearnerData data) {
-		super(data);
+		this.xL = data.fL;
+		this.yL = data.lL;
+		this.tL = data.tL;
+
+		n = tL.size();
+		d = xL.get(0).length;
+		w = new double[d];
+		wOLD = copy(w);
 		eta = 0.5;
 		run();
 	}
 	
 	void run() {
-		w = Arrays.stream(new double[feats.first().length]).mapToObj(x->x).toArray(Double[]::new);
-		d = w.length;
+		w = new double[d];
 		int cur_ex = 0;
 		
-		List<Double[]> examples = feats.collect();
-		List<Double> lab = labs.collect();
-		
 		while(!isConverged()) {
-			Double[] ex = examples.get(cur_ex);
-			double wdotx = dot(w, ex);
-			double y = lab.get(cur_ex);
+			Double[] ex = xL.get(cur_ex);
+			double wdotx = dotProduct(w, ex);
+			double y = yL.get(cur_ex);
 			
 			if(Math.signum(wdotx) == y)
 				correct++;
@@ -35,8 +47,8 @@ class Perceptron extends Learner {
 	}
 	
 	void updateWeights(double sign, Double[] x) {
-		Double[] oldW = copy(w);
-		w = IntStream.range(0, d).mapToObj(z->oldW[z] + (x[z]*sign*eta)).toArray(Double[]::new);
+		double[] oldW = copy(w);
+		w = IntStream.range(0, d).mapToDouble(z->oldW[z] + (x[z]*sign*eta)).toArray();
 	}
 	
 	boolean isConverged() { return correct >= n; }

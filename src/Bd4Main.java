@@ -1,16 +1,12 @@
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.stream.IntStream;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.spark.SparkContext;
-import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.SparkSession;
 
-@SuppressWarnings("unused")
 public class Bd4Main extends LearnerHelp {
 	
 	void run() throws IOException {
@@ -18,6 +14,7 @@ public class Bd4Main extends LearnerHelp {
 		LearnerData data = new LearnerData(ss, "bd4");
 //		new Perceptron(data);
 		new BatchGDSVM(data);
+//		new StochGDSVM(data);
 		
 //		Thread.sleep(20000);
 		ss.close();
