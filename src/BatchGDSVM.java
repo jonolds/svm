@@ -12,15 +12,10 @@ class BatchGDSVM extends LearnerHelp {
 	static double eta, epsilon, b, bOLD, cost, costOLD;
 	static double[] w, wOLD;
 	
-	
 	BatchGDSVM(LearnerData data) { 
-		this.xL = data.fL;
-		this.yL = data.lL;
-		this.tL = data.tL;
+		this.xL = data.fL; this.yL = data.lL; this.tL = data.tL;
 
-		n = tL.size();
-		d = xL.get(0).length;
-		w = new double[d];
+		n = tL.size(); d = xL.get(0).length; w = new double[d];
 		wOLD = copy(w);
 		eta = .0000003; epsilon = 0.25;
 		run();

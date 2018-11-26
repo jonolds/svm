@@ -13,8 +13,10 @@ public class Bd4Main extends LearnerHelp {
 		SparkSession ss = settings();
 		LearnerData data = new LearnerData(ss, "bd4");
 //		new Perceptron(data);
-//		new BatchGDSVM(data);
+		new BatchGDSVM(data);
 		new StochGDSVM(data);
+		
+//		ints(0, 1).forEach(x->new StochGDSVM(data));
 		
 //		Thread.sleep(20000);
 		ss.close();

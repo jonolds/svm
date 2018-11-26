@@ -15,7 +15,7 @@ public class LearnerHelp {
 	static double dotProduct(double[] w, Double[] x) {
 		return ints(0, w.length).mapToDouble(z->w[z]*x[z]).sum();
 	}
-	static double dot(double[] w, double[] x) {
+	static double dotProduct(double[] w, double[] x) {
 		return ints(0, w.length).mapToDouble(z->w[z]*x[z]).sum();
 	}
 	

@@ -3,120 +3,58 @@ import java.util.Random;
 
 import scala.Tuple2;
 
-@SuppressWarnings("static-access")
 class StochGDSVM extends LearnerHelp {
-	Random r = new Random();
-	static List<Double> yL;
-	static List<Double[]> xL;
-	static List<Tuple2<Double[],Double>> tL;
+	Random r;
+	List<Double> yL;
+	List<Double[]> xL;
+	List<Tuple2<Double[],Double>> tL;
 	
-	static int n, d, C = 100;
-	static double eta, epsilon, cost, costOLD, b, bOLD;
-	static double[] w, wOLD;
+	int n, d, C = 100, k = 0;
+	double eta, epsilon, cost, b, bOLD;
+	double[] w, wOLD;
 
 	StochGDSVM(LearnerData data) { 
-		this.xL = data.fL;
-		this.yL = data.lL;
-		this.tL = data.tL;
-
-		n = 6000;
-		d = 122;
+		this.xL = data.fL; this.yL = data.lL; this.tL = data.tL;
+		r = new Random();
+		
+		k = 0; n = tL.size(); d = xL.get(0).length;
 		eta = 0.0001; epsilon = 0.001;
 		w = new double[d];
 		run();
 	}
 	
 	void run() {
-		int k = 0;
-		cost = 0.0;
+		cost = getCost(w, b);
 		while(true) {
-			costOLD = cost;
-			wOLD = copy(w);
-			bOLD = b;
-			
+			bOLD = b; wOLD = copy(w);
 			final int i = r.nextInt(n);
-			final Double[] xi = xL.get(i);
-			final double yi = yL.get(i);
-			
-			ints(0, d).mapToDouble(j->(w[j] = updateJthW(xi, yi, j)));
-
-			b = getNewB(xi, yi);
-			cost = getFWB();
-			
-//			System.out.println(cost);
+			w = getNewW(xL.get(i), yL.get(i));
+			b = getNewB(xL.get(i), yL.get(i));
+//			cost = getCost();
 			k+=1;
 			if(isConverged() || k > 10000)
 				break;
 		}
-		print(k);
+		println(k);
 	}
-
-	
-
 	
 	double getNewB(Double[] xi, double yi) {
-		double nextB;
-		if(yi*(dotProduct(w, xi) + b) < 1)
-			nextB = C*(-yi);
-		else
-			nextB = 0;
-		return b-eta*(nextB);
+		return b-eta*((yi*(dotProduct(w, xi) + b) < 1) ? C*(-yi) : 0);
 	}
 	
-	double updateJthW(Double[] xi, double yi, int j) {
-		double sum1 = yi*(dotProduct(w, xi) + b) >= 1 ? 0 : -yi*xi[j];
-		sum1 = w[j] + C*sum1;
-		return w[j] - eta*(sum1);
-	}
-	
-	
-	double getCost(Double[] xi, double yi) {
-		double sumL = .5*ints(0, d).mapToDouble(j->Math.pow(w[j], 2)).sum();
-		double sumR = C*Math.max(0, 1-yi*(dotProduct(w, xi)+b));
-		return sumL + sumR;
-	}
-	double getFWB() {
-		double sumL = .5*ints(0, d).mapToDouble(j->Math.pow(w[j], 2)).sum();
-		double sumR = C*ints(0, n).mapToDouble(i->Math.max(0, 1-yL.get(i)*(dotProduct(w, xL.get(i))+b))).sum();
-		return sumL + sumR;
-	}
-	
-	double getCostPercentChange() {
-		return (Math.abs(costOLD - cost)*100)/costOLD;
+	public double[] getNewW(Double[] xi, double yi){
+		double[] w2 = new double[w.length];
+		ints(0, d).forEach(j->w2[j] = ((yi*(dotProduct(w, xi) + b)) < 1) ? w[j] - eta*(C*(-yi)*xi[j] + w[j]) : w[j] - eta*w[j]);
+		return w2;
 	}
 
 	boolean isConverged() {
-		double costK = .5*costOLD + .5*getCostPercentChange();
-		System.out.println("costK: " + costK + "   eps: " + epsilon + "   cost < eps: " + (cost < epsilon) + "    cost: " + cost);
-		return costK < epsilon ? true : false;
+		System.out.println("cost: " + cost);
+		return (cost = .5*(cost + (Math.abs(getCost(wOLD,bOLD) - getCost(w,b))*100)/getCost(wOLD,bOLD))) < epsilon ? true : false;
+	}
+	public double getCost(double[] wi, double bi){
+		double sum1 = ints(0, d).mapToDouble(j->Math.pow(wi[j], 2)).sum();
+		double sum2 = tL.stream().mapToDouble(t->Math.max(0,1-(t._2*(dotProduct(wi, t._1) + bi)))).sum();
+		return .5*sum1 + C*sum2;
 	}
 }
-
-
-////Computes the stochast cost
-//public double kCostJON(int i){
-//	return .5*costOLD + .5*percentCostJON(i);
-//}
-////Computes percent cost
-//public double percentCostJON(int i){
-//	double prevFKB = computeFWBJON(wOLD, bOLD);
-//	double newFKB = computeFWBJON(w, b);
-//	return (Math.abs(prevFKB - newFKB)*100)/prevFKB;
-//}
-////Computes f(w,b)
-//public double computeFWBJON(double[]wi, double bi){
-//	double squaredSum = 0.0;
-//	for(int i = 0; i < wi.length; i++){
-//		squaredSum = squaredSum + wi[i]*wi[i];
-//	}
-//	
-//	squaredSum = squaredSum/2;
-//	double rightSum = 0.0;
-//	for(int i = 0; i < n; i++){
-//		double yi = yL.get(i);
-//		double sum = dotProduct(wi, xL.get(i)) + bi;
-//		double product = yi*sum;
-//		rightSum = rightSum + Math.max(0,1-product);
-//	}
-//	return squaredSum + C*rightSum;
-//}
